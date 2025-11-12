@@ -2,28 +2,39 @@
 
 This architecture page briefly explains the core automated workflow that handles suspicious file alerts: from Wazuh → n8n enrichment → decision → action → reporting.  
 This diagram represents the n8n workflow for file enrichment + response
-(Alerts from Wazuh → n8n → VirusTotal → decision → action → report).
+## n8n Workflow — File Enrichment & Response (Mermaid)
 
-+----------------+     +----------------------+     +--------------------+     +--------------------------+
-|  Webhook (W)   | --> |  Extract Alert Data  | --> |  VirusTotal Scan   | --> |  [VT Score >= 35 ?]      |
-|  (Wazuh alert)  |     |  (parse JSON, hash)  |     |  (hash lookup API) |     |  (decision node)         |
-+----------------+     +----------------------+     +--------------------+     +-----+-----------+--------+
-                                                                                      |           |
-                                                                                 (Yes)|           |(No)
-                                                                                      |           |
-                                                                                      v           v
-               +---------------------------+        +---------------------------+    |   +-------------------------+
-               |  Quarantine File          |        |  Prepare SOC Report       |    |   |  Process Clean File     |
-               |  (move file to quarantine)| ---->  |  (alert_id, hash, vt...)  | -->+   |  (log / mark / notify)  |
-               |  (execute generic command)|        |  (triage fields listed)   |        +-------------------------+
-               +---------------------------+        +---------------------------+              |
-                                                                                      +--------+
-                                                                                      |
-                                                                                      v
-                                                                          +---------------------------+
-                                                                          |     Send Alert Email      |
-                                                                          |     (Gmail / SMTP)        |
-                                                                          +---------------------------+
+This diagram shows the automated workflow: **Wazuh alert → n8n enrichment (VirusTotal) → decision → action → reporting**.
+
+```mermaid
+flowchart LR
+  %% Direction: Left to Right
+  classDef box fill:#0b1220,stroke:#2b7cff,color:#ffffff,font-size:12px;
+  classDef action fill:#0b2f14,stroke:#27ae60,color:#ffffff,font-size:12px;
+  classDef email fill:#2b1b3a,stroke:#f39c12,color:#ffffff,font-size:12px;
+  classDef process fill:#1b2430,stroke:#8aa4ff,color:#ffffff,font-size:12px;
+  classDef decision fill:#2b2b2b,stroke:#ff6b6b,color:#ffffff,font-size:12px;
+
+  subgraph intake [ ]
+    direction LR
+    WZ[/"Webhook (Wazuh alert)"/]:::box --> EX[/"Extract Alert Data\n(parse JSON, file hash)"/]:::box
+  end
+
+  EX --> VT[/"VirusTotal Scan\n(hash lookup API)"/]:::process
+
+  VT --> DEC{VT Score >= 35\n(out of 67)?}:::decision
+
+  %% Malicious branch
+  DEC -- Yes --> QUAR[/"Quarantine File\n(move to quarantine folder)\n(execute generic command)"/]:::action
+  QUAR --> REP["Prepare SOC Report\n(alert_id, hash, vt_score, context)"]:::process
+  REP --> EMAIL[/"Send Alert Email\n(Gmail / SMTP)"/]:::email
+
+  %% Clean branch
+  DEC -- No --> CLEAN["Process Clean File\n(log / mark / notify)"]:::process
+  CLEAN --> CLEANREP[/"Send Clean File Report\n(Gmail / SMTP)"/]:::email
+
+  %% Notes / legend anchor
+  class WZ,EX,VT,DEC,QUAR,REP,CLEAN,CLEANREP,EMAIL box;
 
 Legend:
 - Wazuh alerts are posted to the n8n Webhook (left).
@@ -75,3 +86,4 @@ The `Prepare SOC Report` step includes critical fields for analyst triage:
 - Run it under systemd (recommended) for persistence and auto-restart.
 
 ---
+
