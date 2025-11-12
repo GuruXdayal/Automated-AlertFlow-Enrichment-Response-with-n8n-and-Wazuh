@@ -38,7 +38,7 @@ By orchestrating **automated enrichment, triage, and response workflows** using 
 ---
 
 ## 📈 Scope & Future Enhancements
-- **Current Coverage:** Enrichment & automated response for *malicious file alerts*.  
+- **Current Coverage:** Enrichment & automated response for *Malicious File Execution Alerts*.  
 - **Planned Enhancements:**  
   - Add network-based detections (DNS / C2 communications).  
   - Integrate Slack / Teams alerting for SOC notifications.  
@@ -50,3 +50,4 @@ By orchestrating **automated enrichment, triage, and response workflows** using 
 This project demonstrates **real-world SOC automation skills** applicable to **Tier 1–2 SOC operations**, showcasing the ability to design scalable, intelligent, and context-aware security response workflows.
 
 ---
+
