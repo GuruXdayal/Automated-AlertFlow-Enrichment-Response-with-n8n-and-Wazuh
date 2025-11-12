@@ -1,22 +1,40 @@
-# 2. Architecture — AlertFlow System (ASCII Diagram)
+# 2. Architecture — AlertFlow System 
 
 This architecture page briefly explains the core automated workflow that handles suspicious file alerts: from Wazuh → n8n enrichment → decision → action → reporting.  
-The diagram below represents the **n8n workflow** used for file enrichment + response (ASCII art, left → right).
+This diagram represents the n8n workflow for file enrichment + response
+(Alerts from Wazuh → n8n → VirusTotal → decision → action → report).
 
-Webhook (Wazuh alert) ──▶ Extract Alert Data ──▶ VirusTotal Scan
-│ │
-(parsed JSON) ┌───────┴───────┐
-│ │
-[If Success = Malicious] [If Error = Clean]
-│ │
-┌───────────────────────────┴───────────────┐ │
-│ │ ▼
-Quarantine File (move to quarantine folder) Process Clean File
-(execute generic command) (mark / log / notify)
-│ │
-▼ ▼
-Prepare SOC Report ──▶ Send Alert Email Send Clean File Report
-(triage fields) (Gmail / SMTP) (Gmail / SMTP)
++----------------+     +----------------------+     +--------------------+     +--------------------------+
+|  Webhook (W)   | --> |  Extract Alert Data  | --> |  VirusTotal Scan   | --> |  [VT Score >= 35 ?]      |
+|  (Wazuh alert)  |     |  (parse JSON, hash)  |     |  (hash lookup API) |     |  (decision node)         |
++----------------+     +----------------------+     +--------------------+     +-----+-----------+--------+
+                                                                                      |           |
+                                                                                 (Yes)|           |(No)
+                                                                                      |           |
+                                                                                      v           v
+               +---------------------------+        +---------------------------+    |   +-------------------------+
+               |  Quarantine File          |        |  Prepare SOC Report       |    |   |  Process Clean File     |
+               |  (move file to quarantine)| ---->  |  (alert_id, hash, vt...)  | -->+   |  (log / mark / notify)  |
+               |  (execute generic command)|        |  (triage fields listed)   |        +-------------------------+
+               +---------------------------+        +---------------------------+              |
+                                                                                      +--------+
+                                                                                      |
+                                                                                      v
+                                                                          +---------------------------+
+                                                                          |     Send Alert Email      |
+                                                                          |     (Gmail / SMTP)        |
+                                                                          +---------------------------+
+
+Legend:
+- Wazuh alerts are posted to the n8n Webhook (left).
+- n8n extracts alert data and queries VirusTotal (VT).
+- Decision node: VT score >= 35 (of 67) => treat as MALICIOUS (quarantine + alert).
+- Else => treat as CLEAN (process & send clean-file report).
+- SOC Report includes fields: alert_id, timestamp, host, file_path, file_hash,
+  virustotal_score, vt_positive_names, src_ip/dest_ip, rule_id, action_taken, notes.
+
+Forwarder:
+- Alerts forwarded from Wazuh by `/usr/local/bin/wazuh_to_n8n.py` (tails alerts.json).
 
 ---
 
@@ -55,16 +73,5 @@ The `Prepare SOC Report` step includes critical fields for analyst triage:
 ## Wazuh → n8n Forwarder
 - Forwarder script: `/usr/local/bin/wazuh_to_n8n.py` (tails `/var/ossec/logs/alerts/alerts.json`, filters by rule IDs, posts to n8n webhook).  
 - Run it under systemd (recommended) for persistence and auto-restart.
-
----
-
-## MITRE ATT&CK mapping (brief)
-This automated flow helps detect & respond to tactics including:
-- **Execution** — T1204 (User Execution / malicious file execution)  
-- **Credential Access** — T1110 (Brute Force) — relevant for other workflows (SSH)  
-- **Discovery / Reconnaissance** — T1046 (Network Service Discovery) — when Suricata triggers are involved  
-- **Defense Evasion** — T1070 (Indicator Removal on Host) — monitored via FIM
-
-Include these mappings in alert metadata to assist triage and classification.
 
 ---
