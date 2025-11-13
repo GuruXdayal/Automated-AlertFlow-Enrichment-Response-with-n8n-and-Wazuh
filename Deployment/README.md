@@ -1,4 +1,4 @@
-# ⚙️ 3. Deploy — Setting Up n8n with Docker & Compose
+# ⚙️ Deploy — Setting Up n8n with Docker & Compose
 
 This section documents how **n8n** was deployed on an **Ubuntu 22.04 Server VM** to automate enrichment and response actions in the *AlertFlow — Enrichment & Response* project.  
 It uses **Docker + Docker Compose** for a modular, persistent, and easily reproducible setup.
@@ -124,3 +124,4 @@ This ensures that your workflows remain intact after system restarts or migratio
 📌 *This deployment stage forms the automation backbone of the project — connecting Wazuh alerts to n8n’s enrichment and response engine through a containerized, low-code orchestration environment.*
 
 ---
+
