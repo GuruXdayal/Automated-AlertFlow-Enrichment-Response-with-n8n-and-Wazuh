@@ -9,7 +9,7 @@ Designed to reduce analyst workload and shrink investigation time from **10+ min
 
 | Section                                                            | Description                                                           |
 | ------------------------------------------------------------------ | --------------------------------------------------------------------- |
-| **[1️⃣ Project Overview](./Project_Overview/README.md)**         | Purpose, scope, and what this automation solves                       |
+| **[1️⃣ Project Overview](./Project%20Overview/README.md)**         | Purpose, scope, and what this automation solves                       |
 | **[2️⃣ Architecture](./Architecture/README.md)**                 | High-level workflow diagram & flow explanation                        |
 | **[3️⃣ Deployment](./Deployment/README.md)**                     | How the environment was set up (Docker, n8n, forwarding, credentials) |
 | **[4️⃣ Workflows](./Workflows/README.md)**                       | Breakdown of enrichment nodes, decision logic, report generation      |
