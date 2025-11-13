@@ -1,89 +1,94 @@
-# 2. Architecture — AlertFlow System 
+# 🏗️ Architecture — AlertFlow System
 
-This architecture page briefly explains the core automated workflow that handles suspicious file alerts: from Wazuh → n8n enrichment → decision → action → reporting.  
-This diagram represents the n8n workflow for file enrichment + response
-## n8n Workflow — File Enrichment & Response (Mermaid)
-
-This diagram shows the automated workflow: **Wazuh alert → n8n enrichment (VirusTotal) → decision → action → reporting**.
-
-```mermaid
-flowchart LR
-  %% Direction: Left to Right
-  classDef box fill:#0b1220,stroke:#2b7cff,color:#ffffff,font-size:12px;
-  classDef action fill:#0b2f14,stroke:#27ae60,color:#ffffff,font-size:12px;
-  classDef email fill:#2b1b3a,stroke:#f39c12,color:#ffffff,font-size:12px;
-  classDef process fill:#1b2430,stroke:#8aa4ff,color:#ffffff,font-size:12px;
-  classDef decision fill:#2b2b2b,stroke:#ff6b6b,color:#ffffff,font-size:12px;
-
-  subgraph intake [ ]
-    direction LR
-    WZ[/"Webhook (Wazuh alert)"/]:::box --> EX[/"Extract Alert Data\n(parse JSON, file hash)"/]:::box
-  end
-
-  EX --> VT[/"VirusTotal Scan\n(hash lookup API)"/]:::process
-
-  VT --> DEC{VT Score >= 35\n(out of 67)?}:::decision
-
-  %% Malicious branch
-  DEC -- Yes --> QUAR[/"Quarantine File\n(move to quarantine folder)\n(execute generic command)"/]:::action
-  QUAR --> REP["Prepare SOC Report\n(alert_id, hash, vt_score, context)"]:::process
-  REP --> EMAIL[/"Send Alert Email\n(Gmail / SMTP)"/]:::email
-
-  %% Clean branch
-  DEC -- No --> CLEAN["Process Clean File\n(log / mark / notify)"]:::process
-  CLEAN --> CLEANREP[/"Send Clean File Report\n(Gmail / SMTP)"/]:::email
-
-  %% Notes / legend anchor
-  class WZ,EX,VT,DEC,QUAR,REP,CLEAN,CLEANREP,EMAIL box;
-
-Legend:
-- Wazuh alerts are posted to the n8n Webhook (left).
-- n8n extracts alert data and queries VirusTotal (VT).
-- Decision node: VT score >= 35 (of 67) => treat as MALICIOUS (quarantine + alert).
-- Else => treat as CLEAN (process & send clean-file report).
-- SOC Report includes fields: alert_id, timestamp, host, file_path, file_hash,
-  virustotal_score, vt_positive_names, src_ip/dest_ip, rule_id, action_taken, notes.
-
-Forwarder:
-- Alerts forwarded from Wazuh by `/usr/local/bin/wazuh_to_n8n.py` (tails alerts.json).
+This section explains the high-level architecture of the **AlertFlow Enrichment & Response System** I built using **Wazuh → n8n → VirusTotal → Email reporting**.  
+Rather than showing how to reconstruct the workflow, this page focuses on **how the system fits together, why I designed it this way, and what I learned while building it.**
 
 ---
 
-## How this maps into the system
-- **Detection source:** Wazuh Manager generates alerts (forwarded by `/usr/local/bin/wazuh_to_n8n.py` to the n8n webhook).  
-- **Orchestration:** n8n receives the alert (Webhook) → extracts key fields → queries VirusTotal → branches on result → executes remediation or logs a clean-file workflow → sends report email.  
-- **Reporting:** Gmail (SMTP) used as a delivery channel for SOC summary/alerts (generic configuration).
+## 🔎 What This Architecture Represents
+
+This architecture captures the exact logic I implemented in n8n for automated file enrichment and response.  
+It shows how:
+
+- A **Wazuh alert** enters the automation pipeline  
+- n8n **extracts and enriches** the alert using VirusTotal  
+- A **decision node** classifies the file as malicious or clean  
+- The system generates a **SOC report** and sends it via email  
+- A quarantine action is performed when required  
+
+This diagram helped me understand the *end-to-end flow* of how SOAR-style automation works in real SOC environments.
 
 ---
 
-## SOC Report — fields included (used to triage & confirm)
-The `Prepare SOC Report` step includes critical fields for analyst triage:
-- `alert_id` (Wazuh)  
-- `timestamp` (first_seen / last_seen)  
-- `host` (anonymized hostname)  
-- `agent_os` (Windows / Ubuntu)  
-- `file_path` (if applicable)  
-- `file_hash` (MD5 / SHA256)  
-- `virustotal_score` (positive_count / total_scans)  
-- `vt_positive_names` (vendors flagging)  
-- `src_ip` / `dest_ip` (network context)  
-- `rule_id` (Wazuh rule)  
-- `action_taken` (quarantined / ignored / investigated)  
-- `investigator_note` (auto-populated template + manual notes)
+## 🔧 High-Level Workflow Diagram 
+<img width="774" height="514" alt="Screenshot 2025-11-13 154651" src="https://github.com/user-attachments/assets/a06cf425-5547-40ee-82fe-9e231c37fa75" />
 
 ---
 
-## Success / Error Decision Logic (simple rule)
-- **Success (malicious):** VirusTotal enrichment returns score **≥ 35** (out of 67) → treat as malicious → quarantine + alert.  
-- **Error (clean):** VirusTotal score < 35 → treat as clean → process and send clean-file report.
+## 🧠 How This Architecture Helped Me Understand SOC Automation
 
-> Note: Thresholds are lab-configurable. In production, tune by vendor votes/VT heuristic and other telemetry.
+Designing this architecture helped me grasp several key SOC concepts:
 
 ---
 
-## Wazuh → n8n Forwarder
-- Forwarder script: `/usr/local/bin/wazuh_to_n8n.py` (tails `/var/ossec/logs/alerts/alerts.json`, filters by rule IDs, posts to n8n webhook).  
-- Run it under systemd (recommended) for persistence and auto-restart.
+### **1. Alert → Enrichment → Action Pipeline**
+
+I learned how an alert evolves as it moves through a workflow:
+
+- Raw alert enters through the webhook  
+- Important fields are extracted  
+- External enrichment adds context  
+- Logic classifies the severity  
+- Automated actions take place  
+
+This mirrors the core principles of real SOAR design.
+
+---
+
+### **2. Decision-Making Based on Enrichment**
+
+The VirusTotal score (≥ **35**) became my classification threshold.  
+This taught me how **enrichment data directly influences triage decisions** and how SOC tools make contextual decisions automatically.
+
+---
+
+### **3. Response Actions & Reporting**
+
+I implemented:
+
+- **Quarantine logic** for malicious findings  
+- **HTML-based SOC reports** containing key triage fields  
+- **Automated email notifications** for visibility  
+
+This helped me understand how SOC teams **communicate, escalate, and document alerts**.
+
+---
+
+## 🧵 Data Elements Used in the Pipeline
+
+These are the key fields extracted, enriched, and included in the SOC report:
+
+- `file_name`  
+- `file_path`  
+- `file_sha256`  
+- `timestamp`  
+- `rule_id`  
+- `rule_description`  
+- `vt_score`  
+- `action_taken`  
+
+This selection reflects what analysts typically use during **quick triage and validation**.
+
+---
+
+## 🔗 Where This Architecture Fits in the Whole Project
+
+- **Wazuh** generates the alert  
+- **Forwarder script** (`/usr/local/bin/wazuh_to_n8n.py`) sends it to n8n  
+- **n8n** performs extraction, enrichment, decision-making, and reporting  
+- **Gmail SMTP** delivers the final report to the analyst  
+
+This architecture ties the entire workflow together and demonstrates how automation significantly reduces **manual investigation time**.
 
 ---
 
