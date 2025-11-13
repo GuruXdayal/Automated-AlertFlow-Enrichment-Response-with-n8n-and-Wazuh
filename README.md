@@ -13,7 +13,7 @@ Designed to reduce analyst workload and shrink investigation time from **10+ min
 | **[2️⃣ Architecture](./Architecture/README.md)**                 | High-level workflow diagram & flow explanation                        |
 | **[3️⃣ Deployment](./Deployment/README.md)**                     | How the environment was set up (Docker, n8n, forwarding, credentials) |
 | **[4️⃣ Workflows](./Workflows/README.md)**                       | Breakdown of enrichment nodes, decision logic, report generation      |
-| **[5️⃣ Scenario Walkthrough](./Scenario_Walkthrough/README.md)** | Full malicious + clean file simulations with end-to-end results       |
+| **[5️⃣ Scenario Walkthrough](./Scenario%20Walkthrough/README.md)** | Full malicious + clean file simulations with end-to-end results       |
 
 ---
 
