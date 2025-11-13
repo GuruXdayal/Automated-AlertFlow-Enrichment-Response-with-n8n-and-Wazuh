@@ -104,7 +104,7 @@ Wazuh → Forwarder → n8n → VirusTotal → Decision → Response → Email R
 
 ## 📬 **Connect With Me**
 
-👉 **LinkedIn:** [https://www.linkedin.com/in/gurudayal-cybersecurity/](https://www.linkedin.com/in/gurudayal-cybersecurity/)
+[![LinkedIn Badge](https://img.shields.io/badge/LinkedIn-Connect-blue?logo=linkedin&style=flat-square)](https://www.linkedin.com/in/gurudayal-cybersecurity/)
 
 ---
 
